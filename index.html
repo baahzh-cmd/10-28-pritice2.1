@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>反馈表单 · 任务2</title>
+  <style>
+    :root{
+      --bg:#f7f7f8; --card:#ffffff; --text:#111; --muted:#6b7280;
+      --primary:#2563eb; --primary-hover:#1e40af; --ok:#16a34a; --err:#dc2626; --bd:#e5e7eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
+    .card{width:100%; max-width:560px; background:var(--card); border-radius:18px; box-shadow:0 6px 28px rgba(0,0,0,.08); padding:24px 22px;}
+    h1{margin:0 0 4px; font-size:26px; text-align:center}
+    p.sub{margin:0 0 16px; text-align:center; color:var(--muted); font-size:14px}
+    form{display:flex; flex-direction:column; gap:12px}
+    label{font-size:14px}
+    input, textarea{
+      width:100%; padding:12px 12px; border:1px solid var(--bd); border-radius:10px; font-size:14px; background:#fff;
+      outline:none; transition:border .15s ease, box-shadow .15s ease;
+    }
+    input:focus, textarea:focus{ border-color:#c7d2fe; box-shadow:0 0 0 4px #e0e7ff; }
+    .row{display:flex; gap:12px}
+    .row > div{flex:1}
+    .help{font-size:12px; color:var(--muted); margin-top:4px}
+    .err{color:var(--err); font-size:12px; margin-top:6px; display:none}
+    .err.show{display:block}
+    button{
+      appearance:none; border:1px solid var(--bd); background:var(--primary); color:#fff; font-size:15px;
+      padding:12px 14px; border-radius:12px; cursor:pointer; transition:background .15s ease;
+    }
+    button:hover{background:var(--primary-hover)}
+    button[disabled]{opacity:.6; cursor:default}
+    .msg{margin-top:12px; padding:10px 12px; border-radius:10px; font-size:14px; display:none}
+    .msg.ok{display:block; background:#e8f7ee; color:#0f6f34; border:1px solid #c7ecd5}
+    .msg.fail{display:block; background:#fee2e2; color:#991b1b; border:1px solid #fecaca}
+    .req{color:var(--err); margin-left:4px}
+  </style>
+</head>
+<body>
+  <main class="card" role="main" aria-labelledby="title">
+    <h1 id="title">意见反馈</h1>
+    <p class="sub">任务 2｜前端校验 + 模拟提交（无需后端）</p>
+
+    <form id="form" novalidate>
+      <div class="row">
+        <div>
+          <label for="name">姓名<span class="req">*</span></label>
+          <input id="name" name="name" type="text" placeholder="请输入姓名" required maxlength="40" autocomplete="name" />
+          <div id="err-name" class="err">请输入姓名（不超过 40 字）</div>
+        </div>
+        <div>
+          <label for="email">邮箱<span class="req">*</span></label>
+          <input id="email" name="email" type="email" placeholder="your@email.com" required autocomplete="email" />
+          <div id="err-email" class="err">请输入正确的邮箱地址</div>
+        </div>
+      </div>
+
+      <div>
+        <label for="msg">意见与建议<span class="req">*</span></label>
+        <textarea id="msg" name="message" rows="6" placeholder="请描述你的建议…" required minlength="5" maxlength="1000"></textarea>
+        <div class="help">5–1000 字；提交后不会刷新页面</div>
+        <div id="err-msg" class="err">请填写 5–1000 字之间的内容</div>
+      </div>
+
+      <button id="submitBtn" type="submit">提交反馈</button>
+      <div id="result" class="msg" role="alert" aria-live="polite"></div>
+    </form>
+  </main>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const form = $('#form');
+    const result = $('#result');
+    const btn = $('#submitBtn');
+
+    function showError(id, cond){
+      const el = $('#err-' + id);
+      el.classList.toggle('show', !!cond);
+    }
+
+    function isEmail(v){
+      // 简洁邮箱校验：用户名@域名
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+    }
+
+    function validate(){
+      const name = $('#name').value.trim();
+      const email = $('#email').value.trim();
+      const msg = $('#msg').value.trim();
+
+      let ok = true;
+      showError('name', !(name.length>0 && name.length<=40)); ok = ok && (name.length>0 && name.length<=40);
+      showError('email', !isEmail(email)); ok = ok && isEmail(email);
+      showError('msg', !(msg.length>=5 && msg.length<=1000)); ok = ok && (msg.length>=5 && msg.length<=1000);
+      return ok;
+    }
+
+    function mockSubmit(data){
+      // 模拟网络请求：800ms 后成功；10% 概率模拟失败
+      return new Promise((resolve, reject)=>{
+        setTimeout(()=>{
+          Math.random() < 0.9 ? resolve({ok:true}) : reject(new Error('网络繁忙，请稍后重试'));
+        }, 800);
+      });
+    }
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      result.className = 'msg';
+      result.textContent = '';
+
+      if(!validate()){
+        result.className = 'msg fail';
+        result.textContent = '请修正红色提示后再提交';
+        return;
+      }
+
+      // 组装数据（未来接入后端时可直接发送）
+      const payload = {
+        name: $('#name').value.trim(),
+        email: $('#email').value.trim(),
+        message: $('#msg').value.trim(),
+        created_at: new Date().toISOString()
+      };
+
+      // 提交中状态
+      btn.disabled = true;
+      btn.textContent = '提交中…';
+
+      try{
+        await mockSubmit(payload);
+        // 成功提示 & 清空表单
+        result.className = 'msg ok';
+        result.textContent = '已收到！非常感谢你的反馈 🙌';
+        form.reset();
+      }catch(err){
+        result.className = 'msg fail';
+        result.textContent = '提交失败：' + (err?.message || '未知错误');
+      }finally{
+        btn.disabled = false;
+        btn.textContent = '提交反馈';
+      }
+    });
+
+    // 输入时即时去除错误提示
+    ['#name','#email','#msg'].forEach(sel=>{
+      $(sel).addEventListener('input', ()=>{
+        validate(); // 让错误提示实时消失/出现
+      });
+    });
+  </script>
+</body>
+</html>
